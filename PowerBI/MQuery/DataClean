@@ -1,0 +1,146 @@
+let
+  TransformedData = (InputTable as table, ValueToReplaceBlankNull as number, TextToReplaceBlankNull as text, DateToReplaceBlankNullDates as date) =>
+    let
+      ColHeaderProper = Table.TransformColumnNames(
+        Table.TransformColumnNames(
+          Table.TransformColumnNames(
+            Table.TransformColumnNames(InputTable, each Text.Replace(_, "_", " ")), 
+            each Text.Replace(_, ".", " ")
+          ), 
+          each Text.Replace(_, "#", "")
+        ), 
+        Text.Proper
+      ), 
+      AllColsList = Table.ToColumns(
+        Table.Transpose(
+          Table.AddColumn(
+            Table.FromList(
+              Table.ColumnNames(ColHeaderProper), 
+              Splitter.SplitByNothing(), 
+              null, 
+              null, 
+              ExtraValues.Error
+            ), 
+            "Custom", 
+            each null
+          )
+        )
+      ), 
+      ConvertDateTimeZoneToDate = Table.TransformColumnTypes(
+        Table.TransformColumnTypes(
+          Table.ReplaceErrorValues(ColHeaderProper, AllColsList), 
+          List.Transform(
+            Table.ColumnsOfType(
+              Table.ReplaceErrorValues(ColHeaderProper, AllColsList), 
+              {type nullable datetime}
+            ), 
+            each {_, type date}
+          )
+        ), 
+        List.Transform(
+          Table.ColumnsOfType(
+            Table.TransformColumnTypes(
+              Table.ReplaceErrorValues(ColHeaderProper, AllColsList), 
+              List.Transform(
+                Table.ColumnsOfType(
+                  Table.ReplaceErrorValues(ColHeaderProper, AllColsList), 
+                  {type nullable datetime}
+                ), 
+                each {_, type date}
+              )
+            ), 
+            {type nullable datetimezone}
+          ), 
+          each {_, type date}
+        )
+      ), 
+      OutputResult = Table.TransformColumns(
+        ConvertDateTimeZoneToDate, 
+        List.Transform(
+          Table.SelectRows(Table.Schema(ConvertDateTimeZoneToDate), each [TypeName] = "Text.Type")[
+            Name
+          ], 
+          (L) => {L, each if _ = "" or _ = null then TextToReplaceBlankNull else _, type text}
+        )
+          & List.Transform(
+            Table.SelectRows(Table.Schema(ConvertDateTimeZoneToDate), each [TypeName] = "Date.Type")[
+              Name
+            ], 
+            (L) => {L, each if _ = "" or _ = null then DateToReplaceBlankNullDates else _, type date}
+          )
+          & List.Transform(
+            Table.SelectRows(
+              Table.Schema(ConvertDateTimeZoneToDate), 
+              each [TypeName] = "Int64.Type"
+            )[Name], 
+            (L) => {L, each if _ = "" or _ = null then ValueToReplaceBlankNull else _, Int64.Type}
+          )
+          & List.Transform(
+            Table.SelectRows(
+              Table.Schema(ConvertDateTimeZoneToDate), 
+              each [TypeName] = "Int32.Type"
+            )[Name], 
+            (L) => {L, each if _ = "" or _ = null then ValueToReplaceBlankNull else _, Int32.Type}
+          )
+          & List.Transform(
+            Table.SelectRows(
+              Table.Schema(ConvertDateTimeZoneToDate), 
+              each [TypeName] = "Percentage.Type"
+            )[Name], 
+            (L) => {L, each if _ = "" or _ = null then ValueToReplaceBlankNull else _, Percentage.Type}
+          )
+          & List.Transform(
+            Table.SelectRows(
+              Table.Schema(ConvertDateTimeZoneToDate), 
+              each [TypeName] = "Currency.Type"
+            )[Name], 
+            (L) => {L, each if _ = "" or _ = null then ValueToReplaceBlankNull else _, Currency.Type}
+          )
+          & List.Transform(
+            Table.SelectRows(
+              Table.Schema(ConvertDateTimeZoneToDate), 
+              each [TypeName] = "Number.Type"
+            )[Name], 
+            (L) => {L, each if _ = "" or _ = null then ValueToReplaceBlankNull else _, Number.Type}
+          )
+          & List.Transform(
+            Table.SelectRows(
+              Table.Schema(ConvertDateTimeZoneToDate), 
+              each [TypeName] = "Double.Type"
+            )[Name], 
+            (L) => {L, each if _ = "" or _ = null then ValueToReplaceBlankNull else _, Double.Type}
+          )
+          & List.Transform(
+            Table.SelectRows(
+              Table.Schema(ConvertDateTimeZoneToDate), 
+              each [TypeName] = "Decimal.Type"
+            )[Name], 
+            (L) => {L, each if _ = "" or _ = null then ValueToReplaceBlankNull else _, Decimal.Type}
+          )
+          & List.Transform(
+            Table.SelectRows(
+              Table.Schema(ConvertDateTimeZoneToDate), 
+              each [TypeName] = "Any.Type"
+            )[Name], 
+            (L) => {L, each if _ = "" or _ = null then "000000" else _, Any.Type}
+          )
+      )
+    in
+      OutputResult,
+
+    documentation = [
+        Documentation.Name = " Data Clean ",                                     
+        Documentation.Description = " This custom M function query can be used to replace the blank and null values in the data and clean the column header names. 
+          Required input parameters :
+          1. Input Table Name/Step to be cleaned
+          2.  Number to replace nulls and blanks in columns with data type Whole number, Decimal Number and Fixed Decimal Number
+          3.  Text value to replace nulls and blanks in columns with text data type
+          4. Date to replace nulls and blanks in Date Data Type Columns ",                                
+        Documentation.Source = " https://github.com/khaderamesh/Public/blob/main/PowerBI/MQuery/DataClean ",                            
+        Documentation.Version = " 1.1 ",                                           
+        Documentation.Author = " Ramesh Khade (https://in.linkedin.com/in/khaderamesh) "                                              
+
+    ]
+
+in
+  TransformedData
